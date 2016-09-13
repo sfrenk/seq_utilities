@@ -1,4 +1,4 @@
-Useful scripts to be used in combination with NGS analysis pipelines
+# Useful scripts to be used in combination with NGS analysis pipelines
 
 srna_filter: Optionally filters for 22G and/or 21U RNA sequences from fastq/fasta/raw file and outputs a raw sequence file
 
@@ -9,3 +9,5 @@ batch_sra_download.py: Reads in output from sra_lookup.sh and downloads SRA file
 merge_counts.py: Merges read count files made from individual bam files into a single file that can be loaded straight into DESeq
 
 remove_rdna.R: Remove reads mapping to rDNA loci from count table
+
+DESeq2.R: Basic script for differential gene expression analysis with DESeq2
