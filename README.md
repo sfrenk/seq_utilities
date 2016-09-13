@@ -1,13 +1,25 @@
 # Useful scripts to be used in combination with NGS analysis pipelines
 
-srna_filter: Optionally filters for 22G and/or 21U RNA sequences from fastq/fasta/raw file and outputs a raw sequence file
+## srna_filter
 
-sra_lookup.sh: Find SRR file names from sample IDs (eg. GSM IDs from GEO)
+Optionally filters for 22G and/or 21U RNA sequences from fastq/fasta/raw file and outputs a raw sequence file
 
-batch_sra_download.py: Reads in output from sra_lookup.sh and downloads SRA files then extracts adn gzips the fastq file(s)
+## sra_lookup.sh
 
-merge_counts.py: Merges read count files made from individual bam files into a single file that can be loaded straight into DESeq
+Find SRR file names from sample IDs (eg. GSM IDs from GEO)
 
-remove_rdna.R: Remove reads mapping to rDNA loci from count table
+## batch_sra_download.py
 
-DESeq2.R: Basic script for differential gene expression analysis with DESeq2
+Reads in output from sra_lookup.sh and downloads SRA files then extracts adn gzips the fastq file(s)
+
+## merge_counts.py
+
+Merges read count files made from individual bam files into a single file that can be loaded straight into DESeq
+
+## remove_rdna.R
+
+Remove reads mapping to rDNA loci from count table
+
+## DESeq2.R
+
+Basic script for differential gene expression analysis with DESeq2
