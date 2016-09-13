@@ -36,7 +36,7 @@ seqs = f.readlines()
 reads = []
 
 if seqs[0].startswith("@"):
-	print 'extracting sequences from fastq file'
+	print 'extracting sequence information from fastq file'
 	# Each fastq record consists of four lines. The sequence info is on the second line.
 	for i, line in enumerate(seqs):
 		if i % 4 == 1:
@@ -44,11 +44,11 @@ if seqs[0].startswith("@"):
 	reads = [line.strip() for line in reads]
 
 elif seqs[0].startswith(">"):
-	print 'extracting sequences from fasta file'
+	print 'extracting sequence information from fasta file'
 	reads = [line.strip() for line in seqs if line[0] != '>']
 
 elif seqs[0][0].isalpha():
-	print 'extracting sequences from raw text file'
+	print 'extracting sequence information from raw text file'
 	reads = [line.strip() for line in seqs]
 
 else:
@@ -96,3 +96,4 @@ with open(outfile, 'w') as f:
 		f.write(line+'\n')
 
 print('#####	Finished	#####')
+
