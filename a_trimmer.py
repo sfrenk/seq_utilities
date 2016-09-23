@@ -15,17 +15,17 @@ parser.add_argument("-o", "--output", help = "Output file name", default = "read
 args = parser.parse_args()
 
 # Remove output file if it already exists
-if os.exists(args.output):
+if os.path.exists(args.output):
 	os.remove(args.output)
 
 
 in_file = open(args.file, "r")
-out_file = open(args.file, "a")
+out_file = open(args.output, "a")
 
 print("removing 3' A nucleotides")
 count_a = 0
 for line in in_file:
-	read = line.split()
+	read = line.strip()
 	while read.endswith('A'):
 		# Sequentially remove all 3' A nucleotides
 		read = read[:-1]
