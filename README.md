@@ -23,3 +23,7 @@ Remove reads mapping to rDNA loci from count table
 ## DESeq2.R
 
 Basic script for differential gene expression analysis with DESeq2
+
+## a_trimmer
+
+Remove 3' A nucleotides from raw format reads (required for some small RNA libraries)
