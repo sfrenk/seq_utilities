@@ -24,6 +24,10 @@ Remove reads mapping to rDNA loci from count table
 
 Basic script for differential gene expression analysis with DESeq2
 
+## trim_and_filter.sh
+
+Trims reads with trim_galore then converts reads to raw format with an optional filtering step
+
 ## a_trimmer
 
 Remove 3' A nucleotides from raw format reads (required for some small RNA libraries)
