@@ -12,13 +12,19 @@ parser = argparse.ArgumentParser(description="Extract 22g and/or 21u rnas from f
 
 parser.add_argument("I", help = "Input file. File type will be detected based on the first line of the file. File may be in gzipped format.")
 parser.add_argument("-o", help = "Output file.", required = True)
-parser.add_argument("-g", help = "Retrieve 22g rnas.", action = "store_true")
-parser.add_argument("-u", help = "Retrieve 21u rnas.", action = "store_true")
+parser.add_argument("-g", help = "Retrieve 22g RNAs.", action = "store_true")
+parser.add_argument("-u", help = "Retrieve 21u RNAs.", action = "store_true")
+parser.add_argument("-s", help = "If not filtering for 22g or 21u RNAs, you can specify size range of reads to keep by providing min and max length seperated by a comma (eg. to keep reads between 19 and 24 nucleotides (inclusive), use '-s 19,24' (Default size range: 18 to 30 nucleotides)", default = "18,30")
 
 args = parser.parse_args()
 
 infile = args.I
 outfile = args.o
+
+# Define minimum and maximum read size
+
+min_size = int(args.s.split(",")[0])
+max_size = int(args.s.split(",")[1])
 
 ###############################################################################
 
@@ -83,8 +89,12 @@ reads_out = G22 + U21
 # If neither -g nor -u were specified, just convert input reads to raw format
 
 if args.g == False and args.u == False:
-	print('no sRNA type selected. Converting all reads to raw format')
+	print('no sRNA type selected. Selecting for reads that are ' + str(min_size) + ' to ' + str(max_size) + ' nucleotides in length and converting all reads to raw format')
 	reads_out = reads
+
+	# Select reads that fall in the expected size range (18-30 nucleotides)
+
+	reads_out = [x for x in reads_out if len(x) >= min_size and len(x) <= max_size]
 
 # Write out all (filtered) reads to raw txt file
 
@@ -96,4 +106,3 @@ with open(outfile, 'w') as f:
 		f.write(line+'\n')
 
 print('#####	Finished	#####')
-
