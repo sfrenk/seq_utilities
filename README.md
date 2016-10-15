@@ -18,7 +18,7 @@ Merges read count files made from individual bam files into a single file that c
 
 ## remove_rdna.R
 
-Remove reads mapping to rDNA loci from count table
+Removes reads mapping to rDNA loci from count table
 
 ## DESeq2.R
 
@@ -30,4 +30,12 @@ Trims reads with trim_galore then converts reads to raw format with an optional 
 
 ## a_trimmer
 
-Remove 3' A nucleotides from raw format reads (required for some small RNA libraries)
+Removes 3' A nucleotides from raw format reads (required for some small RNA libraries)
+
+## bed_count.sh
+
+Takes a directory of bam files and for each file counts reads mapping to regions in a specified bed file. If a total_mapped_reads.txt file exists, this can be used to calculate normalized read counts
+
+## bed_counts_merge.py
+
+Dependency for bed_count.sh 
