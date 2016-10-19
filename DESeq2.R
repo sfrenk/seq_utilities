@@ -17,7 +17,11 @@ option_list <- list(
         type = "character"),
     make_option(c("-t", "--treatment"),
         help = "column index (or indices) for treatment sample(s) as a comma-separated list",
-        type = "character"))
+        type = "character"),
+    make_option(c("-f", "--total_counts"),
+        help = "if normalizing to total library size (eg. for small RNA libraries) use this option followed by the total_mapped_reads.txt file",
+        default = "None")
+    )
 
 parser <- OptionParser(option_list = option_list,
                        description = "basic differential expression with DESeq2. Input file should be a count table created using subread featureCounts. Note: the sample columns start at index 1")
@@ -54,6 +58,20 @@ print(sample_info)
 dds_count_table <- DESeqDataSetFromMatrix(countData = rawcounts,
                                           colData = sample_info,
                                           design = ~condition)
+if (opts$total_counts != "None"){
+    # Create custom size factors
+    
+    totals <- read.table(opts$total_counts)
+    colnames(totals) <- c("sample", "count")
+    mapped <- numeric()
+    for (i in colnames(rawcounts)){
+        # Get total number of mapped reads for each library
+        mapped[i] <- totals[totals$sample == i, "count"]
+    }
+    # Get size factor for each library by dividing the total number of mapped reads by the average for the selected libraries.
+    mapped_av <- mean(mapped)
+    sizeFactors(dds_count_table) <- sapply(mapped, function(x) x/mapped_av)
+}
 
 dds <- DESeq(dds_count_table)
 res <- results(dds)
@@ -62,3 +80,12 @@ res <- na.omit(res)
 
 # Output results
 write.table(res, file = output_file, sep ="\t", col.names = NA, quote = F)
+
+png(paste0(output_file, "_plot.png"))
+plotMA(res)
+dev.off()
+
+png(paste0(output_file, "_dispersion.png"))
+plotDispEsts(dds)
+dev.off()
+print(summary(res))
