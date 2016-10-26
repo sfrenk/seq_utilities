@@ -17,6 +17,7 @@ parser.add_argument("infile", help = "Input file. File type will be detected bas
 parser.add_argument("-o", "--output", help = "Output file.", required = True)
 parser.add_argument("-f", "--filter", help = "Filter reads based on the first nucleotide (eg. to select 22g RNAs, use options -f g -s 22,22", default = "A,T,G,C")
 parser.add_argument("-s", "--size", help = "Specify size range of reads to keep by providing min and max length seperated by a comma (eg. to keep reads between 19 and 24 nucleotides (inclusive), use '-s 19,24' (Default size range: 18 to 30 nucleotides)", default = "18,30")
+parser.add_argument("-a", "--trim_a", help = "trim 3' A nucleotides", action = "store_true", default = False)
 
 args = parser.parse_args()
 
@@ -67,15 +68,31 @@ f.close()
 
 print("input reads: " + str(len(reads)))
 
+# Trim 3' A nucleotides
+
+if args.trim_a:
+	print("removing 3' A nucleotides")
+	trimmed_reads = []
+	count_a = 0
+	for read in reads:
+		while read.endswith('A'):
+			# Sequentially remove all 3' A nucleotides
+			read = read[:-1]
+			count_a += 1
+		trimmed_reads.append(read)
+
+	reads = trimmed_reads
+	print("3 prime A nucleotides removed: " + str(count_a))
+
 # Extract reads based on filtering parameters
 
 print("extracting reads in size range "+ str(min_size) + " to " + str(max_size) + " nucleotides with " + args.filter + " as the first nucleotide")
 
 reads = [x for x in reads if len(x) >= min_size and len(x) <= max_size and x[0].upper() in first_base]
 
-print("output reads: " + str(len(reads)))
-
 # Write out all (filtered) reads to raw txt file
+
+print("output reads: " + str(len(reads)))
 
 print('writing filtered sequences to: ' + args.output)
 
