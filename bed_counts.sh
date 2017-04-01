@@ -7,7 +7,14 @@ usage="USAGE:
 
 			bed_counts.sh -r <regions bed file> -d <bam directory>
 
+			Other options:
+
+			-t --total: Specify for total_mapped_reads.txt file for normalization (optional)
+
 "
+
+# Set defaults
+total="not_specified"
 
 # Print help if no arguments given
 
@@ -27,6 +34,10 @@ while [[ $# > 0 ]]; do
 		;;
 		-r|--regions)
 		regions="$2"
+		shift
+		;;
+		-t|--total)
+		total="$2"
 		shift
 		;;
 	esac
@@ -59,4 +70,8 @@ for file in ${dir}/*; do
 	fi
 done
 
-python /proj/ahmedlab/steve/seq/util/bed_counts_merge.py .
+if [[ $total == "not_specified" ]]; then
+	python /proj/ahmedlab/steve/seq/util/bed_counts_merge.py .
+else
+	python /proj/ahmedlab/steve/seq/util/bed_counts_merge.py -t $total .
+fi

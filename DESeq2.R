@@ -1,38 +1,44 @@
 #!/usr/bin/env Rscript
 
+library("argparse")
+suppressPackageStartupMessages(library("DESeq2"))
+
 ###############################################################################
 # R script for simple ifferential gene expression analysis with DESeq2
 ###############################################################################
 
-library("optparse")
-suppressPackageStartupMessages(library("DESeq2"))
+parser <- ArgumentParser(description = "basic differential expression with DESeq2. Input file should be a count table created using subread featureCounts. Note: the sample columns start at index 1")
 
-option_list <- list(
-    make_option(c("-o", "--output"),
-        help = "output filename (default: DESeq2_results.txt)",
-        type = "character",
-        default = "DESeq2_results.txt"),
-    make_option(c("-c", "--control"),
-        help = "column index (or indices) for control sample(s) as a comma-separated list",
-        type = "character"),
-    make_option(c("-t", "--treatment"),
-        help = "column index (or indices) for treatment sample(s) as a comma-separated list",
-        type = "character"),
-    make_option(c("-f", "--total_counts"),
-        help = "if normalizing to total library size (eg. for small RNA libraries) use this option followed by the total_mapped_reads.txt file",
-        default = "None")
-    )
+parser$add_argument("file",
+                    help = "input file")
 
-parser <- OptionParser(option_list = option_list,
-                       description = "basic differential expression with DESeq2. Input file should be a count table created using subread featureCounts. Note: the sample columns start at index 1")
-arguments <- parse_args(parser, positional_arguments = 1)
+parser$add_argument("-o", "--output",
+                    help = "output file prefix (default: DESeq2_results)",
+                    type = "character",
+                    default = "DESeq2_results.txt")
 
-opts <- arguments$options
-count_file <- arguments$args
+parser$add_argument("-c", "--control",
+                    help = "column index (or indices) for control sample(s) as a comma-separated list",
+                    type = "character")
 
-output_file <- opts$output
-control_cols <- as.numeric(unlist(strsplit(opts$control, ",")))
-treatment_cols <- as.numeric(unlist(strsplit(opts$treatment, ",")))
+parser$add_argument("-t", "--treatment",
+                    help = "column index (or indices) for treatment sample(s) as a comma-separated list",
+                    type = "character")
+
+parser$add_argument("-f", "--total_counts",
+                    help = "if normalizing to total library size (eg. for small RNA libraries) use this option followed by the total_mapped_reads.txt file",
+                    default = "None")
+
+parser$add_argument("-s", "--subread",
+                    help = "count table was produced by subread FeatureCounts",
+                    action = "store_true")
+
+args <- parser$parse_args
+
+count_file <- args$file
+
+control_cols <- as.numeric(unlist(strsplit(args$control, ",")))
+treatment_cols <- as.numeric(unlist(strsplit(args$treatment, ",")))
 
 # experimental design
 # 1. choose which columns to analyze. Note that the sample columns start at column number 6 from a featureCounts ouput file or column 2 from a merge_counts.py file
@@ -44,11 +50,18 @@ conditions <- c(rep("control", length(control_cols)), rep("treatment", length(tr
 ################################################################################
 
 # Read in count data.
-rawcounts <- read.table(count_file, header = T, row.names = 1)
+rawcounts <- read.table(count_file, header = T, sep = "\t", row.names = 1)
+
+# Filter out rRNA reads
+rawcounts <- rawcounts[!grepl("rrn|rRNAinc", row.names(rawcounts)),]
+
+# Get rid of non-sample columns
+rawcounts <- rawcounts[,6:ncol(rawcounts)]
 
 # Define experimental design:
 rawcounts <- rawcounts[,sample_cols]
 
+# Create sample_info object
 names <- colnames(rawcounts)
 sample_info <- data.frame(condition = conditions)
 row.names(sample_info) <- names
@@ -58,16 +71,18 @@ print(sample_info)
 dds_count_table <- DESeqDataSetFromMatrix(countData = rawcounts,
                                           colData = sample_info,
                                           design = ~condition)
-if (opts$total_counts != "None"){
-    # Create custom size factors
+if (args$total_counts != "None"){
     
-    totals <- read.table(opts$total_counts)
+    # Create custom size factors
+    totals <- read.table(args$total_counts)
     colnames(totals) <- c("sample", "count")
     mapped <- numeric()
     for (i in colnames(rawcounts)){
+        
         # Get total number of mapped reads for each library
         mapped[i] <- totals[totals$sample == i, "count"]
     }
+    
     # Get size factor for each library by dividing the total number of mapped reads by the average for the selected libraries.
     mapped_av <- mean(mapped)
     sizeFactors(dds_count_table) <- sapply(mapped, function(x) x/mapped_av)
@@ -79,13 +94,19 @@ res <- res[order(res$log2FoldChange),]
 res <- na.omit(res)
 
 # Output results
-write.table(res, file = output_file, sep ="\t", col.names = NA, quote = F)
+write.table(res, file = paste0(args$output, ".txt"), sep ="\t", col.names = NA, quote = F)
 
-png(paste0(output_file, "_plot.png"))
+# MA plot
+png(paste0(args$output, "_maPlot.png"))
 plotMA(res)
 dev.off()
 
-png(paste0(output_file, "_dispersion.png"))
+# Dispersion plot
+png(paste0(args$output, "_dispersionPlot.png"))
 plotDispEsts(dds)
 dev.off()
-print(summary(res))
+
+# Histogram of p values
+png(paste0(args$output, "_pval_hist.png"))
+hist(res$pval, breaks=100, col="blue", border="slateblue", main="p values")
+dev.off()
