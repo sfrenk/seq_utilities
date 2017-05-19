@@ -1,12 +1,13 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 #SBATCH -t 5-0
-#SBATCH --mem 4G
+#SBATCH --mem 10G
 
 module add sratoolkit edirect
 
 ###############################################################################
 # Download SRA data
 ###############################################################################
+
 
 ###############################################################################
 # VARIABLES
@@ -16,21 +17,40 @@ module add sratoolkit edirect
 
 sra_dir="/nas/longleaf/home/sfrenk/ncbi/public/sra"
 
+
+###############################################################################
+# CLEANUP
+###############################################################################
+
+
+# Make sure any partly-downloaded SRA files get removed if the script exists. This prevents the "lock" error.
+
+function remove_sra {
+	echo "Cleaning up SRA directory"
+	rm -r ${sra_dir}/*
+} 
+
+trap remove_sra EXIT
+
+
 ###############################################################################
 # ARGUMENTS
 ###############################################################################
+
+# Defaults
+output="."
 
 usage="
 	USAGE:
 		Download SRA data.
 
-		sra_lookup -o <output_file> -i <input_file>
+		sra_download -o <output_directory> -i <input_file>
 
 		-i/--input: two column tab-separated table with ID (eg. published sample name/GSM ID) in the first column and sample name in the second. Example:
 
 			GSM336052	hermaphrodite_embryo
 
-		-o/--output: output directory name
+		-o/--output: output directory name (current directory by default)
 "
 
 if [ -z "$1" ]; then
@@ -81,8 +101,8 @@ while read line; do
 
 	# Extract id and name from the file and remove any illegal/problematic characters
 
-	id=$(echo "$line" | cut -f 1 | sed s/" "/"_"/g)
-	name=$(echo "$line" | cut -f 2 | sed s/" "/"_"/g | sed s/"-"/"_"/g | sed s/[\(\),\.]//g)
+	id=$(echo "$line" | cut -f 1 | sed 's/" "/"_"/g')
+	name=$(echo "$line" | cut -f 2 | sed 's/[ |-|#]/_/g' | sed 's/[\(\),\.]//g')
 
 	# Get SRR file names from SRA
 
@@ -109,10 +129,10 @@ while read line; do
 	else
 
 		# One SRR file for one sample
-
+		srr="$srr_files"
 		prefetch $srr
-		fastq-dump --outdir ${output} --split-files --gzip ${sra_dir}/$srr
-			rm ${sra_dir}/${srr}.sra
+		fastq-dump --outdir ${output} --split-files --gzip ${sra_dir}/${srr}.sra
+		rm ${sra_dir}/${srr}.sra
 
 		# Rename file
 
