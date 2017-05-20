@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #SBATCH -t 5-0
-#SBATCH --mem 10G
+#SBATCH --mem 4G
 
 module add sratoolkit edirect
 
@@ -97,12 +97,18 @@ fi
 ##############################################################################
 ##############################################################################
 
-while read line; do
+# Remove any illegal/problematic characters from sample names
+# Have to convert to csv format because array will split on tab 
 
-	# Extract id and name from the file and remove any illegal/problematic characters
+sed 's/[ -]/_/g' $input | sed 's/[\(\),\.:;#]//g' | sed 's/[\t]/,/g' > ${input}.temp
+readarray samples < ${input}.temp
 
-	id=$(echo "$line" | cut -f 1 | sed 's/" "/"_"/g')
-	name=$(echo "$line" | cut -f 2 | sed 's/[ |-|#]/_/g' | sed 's/[\(\),\.]//g')
+for line in ${samples[@]}; do
+
+	# Extract id and name
+
+	id=$(echo "$line" | cut -d"," -f 1)
+	name=$(echo "$line" | cut -d"," -f 2)
 
 	# Get SRR file names from SRA
 
@@ -152,4 +158,6 @@ while read line; do
 		fi
 	fi
 
-done < $input
+done
+
+rm ${input}.temp
