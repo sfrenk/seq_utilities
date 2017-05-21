@@ -12,10 +12,6 @@ Download SRR files from sample IDs (eg. GSM IDs from GEO) and extract fastq file
 
 Merges read count files made from individual bam files into a single file that can be loaded straight into DESeq
 
-## remove_rdna.R
-
-Removes reads mapping to rDNA loci from count table
-
 ## DESeq2.R
 
 Basic script for differential gene expression analysis with DESeq2
