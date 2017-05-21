@@ -1,26 +1,27 @@
 #!/usr/bin/env bash
+#SBATCH -t 1-0
+#SBATCH --mem 4G
 
 ###############################################################################
-# Collapse reads in raw/fasta format to unique sequences. Output consists of raw reads.
+# Collapse/uncollapse reads in raw/fasta format to unique sequences.
 ###############################################################################
 
 usage="
     Collapse reads in raw/fasta format to unique sequences. Output consists of raw reads.
 
     ARGUMENTS
-        -i/--input		input directory (default: current directory)
-        -o/--output		output directory for collapsed reads (default: current directory)
-        -c/--count	output directory for collapsed reads with counts (default: same as output directory)       
+        -i/--input		input file
+        -o/--output		output file
+        -u/--uncollapse uncollapse reads     
     "
 
 # Defaults:
-input="."
-output="."
-count="same as output"
+uncollapse=false
 
 # Parse arguments
 
 while [[ $# > 0 ]]; do
+	
 	key="$1"
 	case $key in
 		-i|--input)
@@ -31,9 +32,8 @@ while [[ $# > 0 ]]; do
 		output="$2"
 		shift
 		;;
-		-c|--count)
-		count="$2"
-		shift
+		-u|--uncollapse)
+		uncollapse=true
 		;;
 		-h|--help)
 		echo "$usage"
@@ -43,45 +43,76 @@ while [[ $# > 0 ]]; do
 	shift
 done
 
-# If no count output directory is selected, use same directory as main output
+# Check input file
 
-if [[ $count == "same as output" ]]; then
-	count=${output}
-fi
-# Remove trailing "/" from directories
-
-if [[ ${input:(-1)} == "/" ]]; then
-	input=${input::${#input}-1}
+if [[ ! -f $input ]]; then
+	echo "ERROR: Invalid input file"
+	exit 1
 fi
 
-if [[ ${output:(-1)} == "/" ]]; then
-	output=${output::{#output}-1}
-fi
+###############################################################################
+###############################################################################
 
-if [[ ${count:(-1)} == "/" ]]; then
-	count=${count::{#count}-1}
-fi
+if [[ $uncollapse = false ]]; then
 
-# Make output file if it doesn't exist already
+	# Collapse read file
 
-if [ ! -d $output ];then
-	mkdir $output
-fi
+	if [[ ${file:(-3)} == ".gz" ]]; then
+		
+		zgrep -v ">" $input | sort | uniq -c | awk '{ print ">read_" NR "_count="$1"\n"$2 }' > ${output}"_temp.txt"
+		gzip -c ${output}"_temp.txt" > ${output}
+		rm ${output}"_temp.txt"
 
-# Collapse read files
+	else
 
-for file in ${input}/*; do
-	if [[ -f $file ]]; then
-	
-		if [[ ${file:(-3)} == ".gz" ]]; then
-			gunzip -c $file | grep -v ">" - | uniq -c | sed -r 's/^( *[^ ]+) +/\1\t/' > ${count}/$file"_collapsed_counts.txt"
-		else
-			grep -v ">" $file | uniq -c | sed -r 's/^( *[^ ]+) +/\1\t/' > ${count}/$file"_collapsed_counts.txt"
+		grep -v ">" $input | sort | uniq -c | awk '{ print ">read_" NR "_count="$1"\n"$2 }' > ${output}
+
+	fi
+
+else
+
+	# Uncollapse read files
+
+	if [[ ${file:(-3)} == ".gz" ]]; then
+
+		gunzip -c $input > ${output}"_temp.txt"
+		input_file=${output}"_temp.txt"
+
+	else
+
+		input_file=${input}
+	fi
+
+	# Remove output file if it already exists
+
+	if [[ -f $output ]]; then
+		rm $output
+	fi
+
+	while read line; do
+
+		if [[ ${line:0:1} == ">" ]]; then
+
+			header="$line"
+			count=$(echo "$line" | sed -r 's/.*count=([0-9]+).*/\1/g')
+			read line
+			seq="$line"
+
+			while [[ $count > 0 ]]; do
+
+				printf "%s\n" "$header" >> ${output}
+				printf "%s\n" "$seq" >> ${output}
+				
+				let count-=1
+
+			done
+
 		fi
 
-		cut -f2 ${count}/$file"_collapsed_counts.txt" > ${output}/$file"_collapsed.txt"
-	fi
-done
+	done < $input_file
 
-gzip ${output}/*
-gzip ${count}/*
+	if [[ -f ${output}"_temp.txt" ]]; then
+		rm ${output}"_temp.txt"
+	fi
+
+fi

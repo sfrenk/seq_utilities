@@ -4,13 +4,9 @@
 
 Optionally filters for 22G and/or 21U RNA sequences from fastq/fasta/raw file and outputs a raw sequence file
 
-## sra_lookup.sh
+## sra_download.sh
 
-Find SRR file names from sample IDs (eg. GSM IDs from GEO)
-
-## batch_sra_download.py
-
-Reads in output from sra_lookup.sh and downloads SRA files then extracts adn gzips the fastq file(s)
+Download SRR files from sample IDs (eg. GSM IDs from GEO) and extract fastq files
 
 ## merge_counts.py
 
@@ -24,13 +20,9 @@ Removes reads mapping to rDNA loci from count table
 
 Basic script for differential gene expression analysis with DESeq2
 
-## trim_and_filter.sh
+## trim.sh
 
-Trims reads with trim_galore then converts reads to raw format with an optional filtering step
-
-## a_trimmer
-
-Removes 3' A nucleotides from raw format reads (required for some small RNA libraries)
+Basic script for trimming reads
 
 ## bed_count.sh
 
@@ -39,3 +31,15 @@ Takes a directory of bam files and for each file counts reads mapping to regions
 ## bed_counts_merge.py
 
 Dependency for bed_count.sh 
+
+## collapse_reads.sh
+
+Used to collapse identical reads (often used in sRNA data to counteract the effect of "jackpotting"). Contains an option to uncollapsed a collapsed file.
+
+## run_picard_markdup.sh
+
+Run the picard duplicate removal utility on a batch of bam files
+
+## rnaseq.R
+
+Contains some basic processing steps for RNA-seq data that don't involve DESeq (eg. normalizing to total mapped reads)

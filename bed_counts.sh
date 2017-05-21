@@ -1,6 +1,19 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
+#SBATCH -t 1-0
+#SBATCH --mem 10G
 
-# For each bam file in a directory, count the number of reads mapping to regions defined in a bed file.
+module load python bedtools
+
+# For each bam file in a directory, count the number of reads mapping to regions defined in a bed file using bedtools coverage. Requires bed_counts_merge.py
+
+###############################################################################
+# VARIABLES
+###############################################################################
+
+# path to merge_counts.py script
+
+mc_path="/proj/ahmedlab/steve/seq/util/bed_counts_merge.py"
+
 
 usage="USAGE:
 			For each bam file in a directory, count the number of reads mapping to regions defined in a bed file. Make sure python is loaded!
@@ -71,7 +84,7 @@ for file in ${dir}/*; do
 done
 
 if [[ $total == "not_specified" ]]; then
-	python /proj/ahmedlab/steve/seq/util/bed_counts_merge.py .
+	python $mc_path .
 else
-	python /proj/ahmedlab/steve/seq/util/bed_counts_merge.py -t $total .
+	python $mc_path -t $total .
 fi

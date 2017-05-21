@@ -8,9 +8,12 @@ import pandas as pd
 import os
 import argparse
 
-parser = argparse.ArgumentParser(description="Merge multiple count files into a single count table")
-parser.add_argument("directory", help="directory containing count files (each file must end with '.bed'")
+parser = argparse.ArgumentParser(description = "Merge multiple count files into a single count table")
+
+parser.add_argument("directory", help = "directory containing count files (each file must end with '.bed'")
+
 parser.add_argument("-o", "--output", help = "output file name (default: count_table.txt", default = "bed_count_table.txt")
+
 parser.add_argument("-t", "--total", help = "total mapped reads file for Normalization (optional)")
 
 args = parser.parse_args()
@@ -22,6 +25,7 @@ for f in os.listdir(args.directory):
 		count_files.append(f)
 
 # Read in first count file. All further counts will be appended to this data frame
+
 bed_name = count_files[0].replace(".bed", "").replace("_sorted", "")
 merged = pd.read_csv(count_files[0], sep="\t", header=None, names=['chr', 'start', 'end', bed_name])
 
