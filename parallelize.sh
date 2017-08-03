@@ -44,6 +44,7 @@ do
     shift
 done
 
+# Check arguments
 args=(dir, pipeline)
 
 for i in ${args[@]}; do
@@ -54,6 +55,7 @@ for i in ${args[@]}; do
 	fi
 done
 
+# Select pipeline
 case $pipeline in
 	srna)
 	pipeline_file="${pipeline_dir}/bowtie_srna.sh"
@@ -66,10 +68,20 @@ case $pipeline in
 	;;
 esac
 
+# Count number of samples
 shopt -s nullglob
 fastq=(${dir}/*.fastq.gz)
 fastq_number=${#fastq[@]}
 
-sed "2i #SBATCH --array 0-$(($fastq_number-1))" $pipeline_file | sed 's/for file in \${files\[@\]}/for file in \${files\[SLURM_ARRAY_TASK_ID\]}/' > pipeline.sh
+# Create directory for logs
+if [[ ! -d logs ]]; then
+	mkdir logs
+fi
+
+# Modify the pipeline to include:
+#	1. SBATCH --array, -o and -e options
+#	2. modify the for loop so that only one file is processed per run
+
+sed "2i #SBATCH --array 0-$(($fastq_number-1))\n#SBATCH -o ./logs/slurm_%a.out\n#SBATCH -e ./logs/slurm_%a.err" $pipeline_file | sed 's/for file in \${files\[@\]}/for file in \${files\[\$SLURM_ARRAY_TASK_ID\]}/' > pipeline.sh
 
 printf "Created pipeline.sh for running $pipeline_file with $fastq_number samples\n"
