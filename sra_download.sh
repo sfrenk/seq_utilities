@@ -23,14 +23,14 @@ sra_dir="/nas/longleaf/home/sfrenk/ncbi/public/sra"
 ###############################################################################
 
 
-# Make sure any partly-downloaded SRA files get removed if the script exists. This prevents the "lock" error.
+# Make sure any partly-downloaded SRA files get removed if the script exits. This prevents the "lock" error.
 
-function remove_sra {
-	echo "Cleaning up SRA directory"
-	rm -r ${sra_dir}/*
-} 
+#function remove_sra {
+#	echo "Cleaning up SRA directory"
+#	rm -r ${sra_dir}/*
+#} 
 
-trap remove_sra EXIT
+#trap remove_sra EXIT
 
 
 ###############################################################################
@@ -100,7 +100,7 @@ fi
 # Remove any illegal/problematic characters from sample names
 # Have to convert to csv format because array will split on tab 
 
-sed 's/[ -]/_/g' $input | sed 's/[\(\),\.:;#]//g' | sed 's/[\t]/,/g' > ${input}.temp
+sed 's/[ -]/_/g' $input | sed -r 's/[^a-zA-Z0-9_\t]//g' | sed 's/[\t]/,/g' > ${input}.temp
 readarray samples < ${input}.temp
 
 for line in ${samples[@]}; do

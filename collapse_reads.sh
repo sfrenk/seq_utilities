@@ -57,7 +57,7 @@ if [[ $uncollapse = false ]]; then
 
 	# Collapse read file
 
-	if [[ ${file:(-3)} == ".gz" ]]; then
+	if [[ ${input:(-3)} == ".gz" ]]; then
 		
 		zgrep -v ">" $input | sort | uniq -c | awk '{ print ">read_" NR "_count="$1"\n"$2 }' > ${output}"_temp.txt"
 		gzip -c ${output}"_temp.txt" > ${output}
@@ -73,8 +73,10 @@ else
 
 	# Uncollapse read files
 
-	if [[ ${file:(-3)} == ".gz" ]]; then
+	echo "$input"
 
+	if [[ ${input:(-3)} == ".gz" ]]; then
+		
 		gunzip -c $input > ${output}"_temp.txt"
 		input_file=${output}"_temp.txt"
 
@@ -93,21 +95,22 @@ else
 
 		if [[ ${line:0:1} == ">" ]]; then
 
-			header="$line"
-			count=$(echo "$line" | sed -r 's/.*count=([0-9]+).*/\1/g')
+			# fasta header
+			printf "%s\n" "$line" >> ${output}
 			read line
-			seq="$line"
-
-			while [[ $count > 0 ]]; do
-
-				printf "%s\n" "$header" >> ${output}
-				printf "%s\n" "$seq" >> ${output}
-				
-				let count-=1
-
-			done
 
 		fi
+
+		seq=$(echo "$line" | sed -r 's/(.+)(count=|\t).*/\1/g')
+		count=$(echo "$line" | sed -r 's/.*(count=|\t)([0-9]+).*/\2/g')
+
+		while [[ $count > 0 ]]; do
+
+			printf "%s\n" "$seq" >> ${output}
+			let count-=1
+
+		done
+
 
 	done < $input_file
 

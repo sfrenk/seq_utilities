@@ -1,8 +1,9 @@
 #!/usr/bin/bash
 
-# Parallelization script from sequencing pipelines
+# Parallelization script from sequencing pipelines and utilities
 
 pipeline_dir="/nas/longleaf/home/sfrenk/pipelines"
+util_dir="/nas/longleaf/home/sfrenk/scripts/util"
 
 usage="Creates a modified copy of a pipeline script in the current directory and sets up the copy for parallelization
 
@@ -15,6 +16,7 @@ usage="Creates a modified copy of a pipeline script in the current directory and
 	srna
 	hisat2
 	chip
+	telo_cov
 	"
 
 # Parse command line parameters
@@ -66,22 +68,37 @@ case $pipeline in
 	hisat2)
 	pipeline_file="${pipeline_dir}/hisat2.sh"
 	;;
+	telo_cov)
+	pipeline_file="${util_dir}/telo_cov.sh"
+	;;
 esac
 
 # Count number of samples
 shopt -s nullglob
-fastq=(${dir}/*.fastq.gz)
-fastq_number=${#fastq[@]}
+
+if ! [[ $pipeline == "telo_cov" ]]; then
+	files=(${dir}/*.fastq.gz)
+	pipeline_name="pipeline.sh"
+	log_dir="logs"
+
+else
+	files=(${dir}/*.bam)
+	log_dir="telo_cov_logs"
+	pipeline_name="telo_cov_pipeline.sh"
+
+fi
+
+file_number=${#files[@]}
 
 # Create directory for logs
-if [[ ! -d logs ]]; then
-	mkdir logs
+if [[ ! -d $log_dir ]]; then
+	mkdir $log_dir
 fi
 
 # Modify the pipeline to include:
 #	1. SBATCH --array, -o and -e options
 #	2. modify the for loop so that only one file is processed per run
 
-sed "2i #SBATCH --array 0-$(($fastq_number-1))\n#SBATCH -o ./logs/slurm_%a.out\n#SBATCH -e ./logs/slurm_%a.err" $pipeline_file | sed 's/for file in \${files\[@\]}/for file in \${files\[\$SLURM_ARRAY_TASK_ID\]}/' > pipeline.sh
+sed "2i #SBATCH --array 0-$(($file_number-1))\n#SBATCH -o ./${log_dir}/slurm_%a.out\n#SBATCH -e ./${log_dir}/slurm_%a.err" $pipeline_file | sed 's/for file in \${files\[@\]}/for file in \${files\[\$SLURM_ARRAY_TASK_ID\]}/' > $pipeline_name
 
-printf "Created pipeline.sh for running $pipeline_file with $fastq_number samples\n"
+printf "Created $pipeline_name for running $pipeline_file with $file_number samples\n"

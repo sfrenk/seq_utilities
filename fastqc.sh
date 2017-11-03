@@ -4,6 +4,7 @@ module add fastqc
 module list
 
 # Defaults
+directory="."
 output="."
 
 usage="
@@ -14,7 +15,7 @@ usage="
 
 		Trims adapter sequence from fastq files.
 
-		-d/--directory: directory containing fastq files
+		-d/--directory: directory containing fastq files (default: current directory)
 		-o/--output: output directory (default: current directory)
 "
 

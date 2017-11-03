@@ -29,11 +29,11 @@ parser$add_argument("-f", "--total_counts",
                     help = "if normalizing to total library size (eg. for small RNA libraries) use this option followed by the total_mapped_reads.txt file",
                     default = "None")
 
-parser$add_argument("-s", "--subread",
-                    help = "count table was produced by subread FeatureCounts",
+parser$add_argument("-s", "--stringtie",
+                    help = "count table was produced by stringtie",
                     action = "store_true")
 
-args <- parser$parse_args
+args <- parser$parse_args()
 
 count_file <- args$file
 
@@ -49,14 +49,25 @@ conditions <- c(rep("control", length(control_cols)), rep("treatment", length(tr
 
 ################################################################################
 
-# Read in count data.
-rawcounts <- read.table(count_file, header = T, sep = "\t", row.names = 1)
+if (args$stringtie) {
+    
+    # Stringtie output file
+    rawcounts <- as.matrix(read.csv(count_file, row.names="transcript_id"))
 
-# Filter out rRNA reads
-rawcounts <- rawcounts[!grepl("rrn|rRNAinc", row.names(rawcounts)),]
-
-# Get rid of non-sample columns
-rawcounts <- rawcounts[,6:ncol(rawcounts)]
+} else {
+    
+    # Subread output file
+    
+    # Read in count data.
+    rawcounts <- read.table(count_file, header = T, sep = "\t", row.names = 1)
+    
+    # Filter out rRNA reads
+    rawcounts <- rawcounts[!grepl("rrn|rRNAinc", row.names(rawcounts)),]
+    
+    # Get rid of non-sample columns
+    rawcounts <- rawcounts[,6:ncol(rawcounts)]
+    
+}
 
 # Define experimental design:
 rawcounts <- rawcounts[,sample_cols]
