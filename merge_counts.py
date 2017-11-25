@@ -12,35 +12,24 @@ import argparse
 
 parser = argparse.ArgumentParser(description = "Merge multiple count files into a single count table")
 
-parser.add_argument("directory", help = "directory containing count files (each file must end with '.txt'")
+parser.add_argument("count_files", help = "Count files to merge", nargs = "+")
 parser.add_argument("-o", "--output", help = "output file name (default: count_table.txt", default = "count_table.txt")
 
 args = parser.parse_args()
 
-if args.directory.endswith("/"):
-	args.directory = args.directory[:-1]
-
-# Merge files
-
-count_files = []
-
-for f in os.listdir(args.directory):
-	if f.endswith("_counts.txt"):
-		count_files.append(f)
-
 # Read in first count file. All further counts will be appended to this data frame
 
-merged = pd.read_csv(args.directory + "/" + count_files[0], sep="\t", header=None, names=[count_files[0].replace("_counts.txt", ""), 'gene'])
-merged = merged[['gene', count_files[0].replace("_counts.txt", "")]]
+merged = pd.read_csv(args.count_files[0], sep="\t", header=None, names=[args.count_files[0].replace("_counts.txt", ""), 'gene'])
+merged = merged[['gene', args.count_files[0].replace("_counts.txt", "")]]
 
 # Remove the first count file from the list so that it doesn't get counted twice
 
-count_files = count_files[1:]
+count_files = args.count_files[1:]
 
 # Merge the other count files to the first one
 
 for i in count_files:
-	count_file = pd.read_csv(args.directory + "/" + i, sep="\t", header=None, names=[i.replace("_counts.txt", ""), 'gene'])
+	count_file = pd.read_csv(i, sep="\t", header=None, names=[i.replace("_counts.txt", ""), 'gene'])
 	merged = merged.merge(count_file, how='left', on='gene')
 
 # Get rid of the row containing unmapped reads
