@@ -6,7 +6,7 @@ module load bedtools ucsctools
 module list
 
 usage="
-    Make bedgraph files of coverage at specific genome coordinates.
+    Make normalized BigWig files from a directory of bam files. Tracks are normalized to the mean total mapped reads per library.
 
     ARGUMENTS
         -d/--dir

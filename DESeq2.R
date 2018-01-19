@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-library("argparse")
+suppressPackageStartupMessages(library("argparse"))
 suppressPackageStartupMessages(library("DESeq2"))
 
 ###############################################################################
@@ -15,7 +15,7 @@ parser$add_argument("file",
 parser$add_argument("-o", "--output",
                     help = "output file prefix (default: DESeq2_results)",
                     type = "character",
-                    default = "DESeq2_results.txt")
+                    default = "DESeq2_results")
 
 parser$add_argument("-c", "--control",
                     help = "column index (or indices) for control sample(s) as a comma-separated list",
@@ -69,8 +69,12 @@ if (args$stringtie) {
     
 }
 
+
 # Define experimental design:
 rawcounts <- rawcounts[,sample_cols]
+
+# Round counts (they may be decimal, eg if using --fraction option in subread)
+rawcounts <- round(rawcounts, 0)
 
 # Create sample_info object
 names <- colnames(rawcounts)
@@ -100,7 +104,8 @@ if (args$total_counts != "None"){
 }
 
 dds <- DESeq(dds_count_table)
-res <- results(dds)
+res <- results(dds, contrast=c("condition","treatment","control"))
+res
 res <- res[order(res$log2FoldChange),]
 res <- na.omit(res)
 
@@ -117,7 +122,13 @@ png(paste0(args$output, "_dispersionPlot.png"))
 plotDispEsts(dds)
 dev.off()
 
+# PCA plot
+rld <- rlog(dds, blind = FALSE)
+png(paste0(args$output, "_PCAPlot.png"))
+plotPCA(rld)
+dev.off()
+
 # Histogram of p values
 png(paste0(args$output, "_pval_hist.png"))
-hist(res$pval, breaks=100, col="blue", border="slateblue", main="p values")
+hist(res$padj, breaks=100, col="blue", border="slateblue", main="p values")
 dev.off()

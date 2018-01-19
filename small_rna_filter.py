@@ -116,7 +116,8 @@ def parse_input(input_file, output_file, input_mode, output_mode, filter_params,
 		while True:
 			
 			try:
-				header = next(input_file).strip()
+				# Note: have to remove "@" from the beginning of fastq header 
+				header = next(input_file).strip()[1:]
 				seq = next(input_file).strip()
 
 				if trim is not None:

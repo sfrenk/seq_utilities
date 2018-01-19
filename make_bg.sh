@@ -4,6 +4,8 @@
 
 module add samtools bedtools
 
+bedtools_genome_file="/nas/longleaf/home/sfrenk/proj/seq/WS251/genome/genome.bedtools_genome_file"
+
 usage="
     Make bedgraph files of coverage at specific genome coordinates.
 
@@ -23,6 +25,9 @@ usage="
         -r/--remove_rdna
         Remove reads mapping to rDNA (recommended for most RNA-seq data)
 
+        -g/--genomecov
+        Report coverage at each base within regions defined by the bed file.
+
         -o/--output
         Output filename (default: combined.bg)
 
@@ -35,6 +40,7 @@ paired_flag=""
 extend_flag=""
 remove_rdna=false
 output="combined.bg"
+genomecov=false
 
 # Arguments
 
@@ -63,6 +69,9 @@ do
 		-b|--bed)
 		bedfile="$2"
 		shift
+		;;
+		-g|--genomecov)
+		genomecov=true
 		;;
 		-o|--output)
 		output="$2"
@@ -143,24 +152,37 @@ for file in ${files[@]}; do
 
 	printf "Making coverage bg file for ${base}\n"
 
-	bedtools genomecov -ibam bam_subset/${base}_subset.bam -dz $paired_flag $extend_flag > bg/${base}.bg
+	if [[ $genomecov = true ]]; then
+
+		bedtools genomecov -ibam bam_subset/${base}_subset.bam -dz $paired_flag $extend_flag > bg/${base}.bg
+	else
+
+		bedtools coverage -b bam_subset/${base}_subset.bam -a $bedfile -counts -sorted -g $bedtools_genome_file > bg/${base}.bg
+	fi
 
 done
 
-# Process bg files into temp files so they can be processed
+# MERGING
 
+printf "Merging files...\n"
 array=(bg/*.bg)
 
-for file in ${array[@]}; do
-	base="$(basename $file)" 
+if [[ $genomecov = true ]]; then
 
-	# Edit position columns to indicate genomic position
-	awk '{print $1"\t"$2"\t"($2+1)"\t"$3}' $file > bg/${base}.temp
+	# Process genomecov files into temp files so they can be processed
 
-done
+	for file in ${array[@]}; do
+		base="$(basename $file)" 
 
-# Merge files
-array=(bg/*.temp)
+		# Edit position columns to indicate genomic position
+		awk '{print $1"\t"$2"\t"($2+1)"\t"$3}' $file > bg/${base}.temp
+
+	done
+	array=(bg/*.temp)
+fi
+
 bedtools unionbedg -i ${array[@]} -header -names ${array[@]} > $output
 
-rm bg/*.temp
+if [[ -f bg/*.temp ]]; then
+	rm bg/*.temp
+fi
