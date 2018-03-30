@@ -1,6 +1,9 @@
 #!/usr/bin/bash
-#SBATCH -t 5-0
+#SBATCH -t 1-0
 #SBATCH --mem 4G
+
+# ADD the following line above this one for parallel mode: #SBATCH --array 0-n
+# Where n = number of samples -1
 
 module add sratoolkit edirect
 
@@ -39,6 +42,7 @@ sra_dir="/nas/longleaf/home/sfrenk/ncbi/public/sra"
 
 # Defaults
 output="."
+parallel=false
 
 usage="
 	USAGE:
@@ -51,6 +55,8 @@ usage="
 			GSM336052	hermaphrodite_embryo
 
 		-o/--output: output directory name (current directory by default)
+
+		-p/--parallel: parallel mode (don't forget to add the #SBATCH --array line!)
 "
 
 if [ -z "$1" ]; then
@@ -70,6 +76,9 @@ do
         output="$2"
         shift
         ;;
+        -p|--parallel)
+		parallel=true
+		;;
     esac
 shift
 done
@@ -103,12 +112,13 @@ fi
 sed 's/[ -]/_/g' $input | sed -r 's/[^a-zA-Z0-9_\t]//g' | sed 's/[\t]/,/g' > ${input}.temp
 readarray samples < ${input}.temp
 
-for line in ${samples[@]}; do
+
+function download_file () {
 
 	# Extract id and name
 
-	id=$(echo "$line" | cut -d"," -f 1)
-	name=$(echo "$line" | cut -d"," -f 2)
+	id=$(echo "$1" | cut -d"," -f 1)
+	name=$(echo "$1" | cut -d"," -f 2)
 
 	# Get SRR file names from SRA
 
@@ -157,7 +167,15 @@ for line in ${samples[@]}; do
 
 		fi
 	fi
+}
 
-done
+if [[ $parallel == true ]]; then
+	download_file ${samples[$SLURM_ARRAY_TASK_ID]}
 
-rm ${input}.temp
+else
+	for line in ${samples[@]}; do
+		download_file $line
+	done
+fi
+
+#rm ${input}.temp

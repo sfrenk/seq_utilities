@@ -8,7 +8,7 @@ library(rtracklayer)
 
 ### RUN ON CLUSTER ###
 
-parser <- ArgumentParser(description = "Visualize reads in bam files mapping to a specific region.")
+parser <- ArgumentParser(description = "Visualize reads in bam files (or other type of data) mapping to a specific region.")
 
 parser$add_argument("files",
                     help = "List of bam files to visualize",
@@ -49,11 +49,33 @@ parser$add_argument("-r", "--regex",
                     type = "character",
                     default = "(.+)\\.bam")
 
+parser$add_argument("-a", "--annotation",
+                    help = "Extra anotation track to add (gff3/gtf format)")
+
+parser$add_argument("-n", "--names",
+                    help = "Comma separated list of Names of datatracks (optional. By default, name is extracted from filename using regex argument)",
+                    default = "")
+
 args <- parser$parse_args()
+
+# Check input files
+for (file in args$files){
+    if (!file.exists(file)){
+        args$files <- args$files[args$files != file]
+        print(paste0("WARNING: Could not find the file ", file))
+    }
+}
+
+# Set up data track names
+if (args$names != ""){
+    data_names <- unlist(strsplit(args$names, ","))
+} else {
+    data_names <- sapply(args$files, function(x) gsub(args$regex, "\\1", basename(x)))
+}
 
 # Set up output name
 if (args$output == ""){
-    outfile <- paste0(args$chrom, "_", args$start, "_", args$end, ".png")
+    outfile <- paste0(args$chrom, "_", as.character(args$start), "_", as.character(args$end), ".png")
 } else {
     outfile <- args$output
 }
@@ -74,10 +96,21 @@ if (!exists("mart")){
     backup_grtrack <- TRUE
 }
 
+# Axis track
 gtrack <- GenomeAxisTrack(fontsize = 10, labelPos = "above")
 
+# Extra annotation tracks
+ano_tracks <- list()
+
+if (length(args$annotation) > 0){ 
+    for (i in 1:length(args$annotation)){
+        gff <- import.gff(args$annotation[i])
+        ano_tracks[i] <- GeneRegionTrack(gff, showId = TRUE, name = str_extract(args$annotation[i], "[^/]+$"), background.title = "transparent", fontsize = 10)
+    }
+}
+
 ## Plot tracks
-backup_grtrack <- TRUE
+#backup_grtrack <- TRUE
 make_panel <- function(chrom, start, end){
 
     # Anotation track (gene models)
@@ -92,18 +125,32 @@ make_panel <- function(chrom, start, end){
     # Assemble all tracks into one list
     tracks <- list(gtrack, grtrack)
     
+    # Add any extra annotation tracks
+    if (length(ano_tracks) > 0){
+        for (i in length(ano_tracks)){
+            tracks[2+i] <- ano_tracks[i]
+        }
+    }
+    
+    ntracks <- length(tracks)
+    
     # Data tracks
     for (i in 1:length(args$files)){
-        if (args$ylim > 0){
-            tracks[2+i] <- AlignmentsTrack(args$files[i], name = gsub(args$regex, "\\1", basename(args$files[i])), ylim = c(0, args$ylim), type = args$type)
+        if (grepl(".bam", args$files[i])){
+            if (args$ylim > 0){
+                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], ylim = c(0, args$ylim), type = args$type)
+            } else {
+                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], type = args$type)
+            }
         } else {
-            tracks[2+i] <- AlignmentsTrack(args$files[i], name = gsub(args$regex, "\\1", basename(args$files[i])), type = args$type)
+            # Bedgraph file
+            tracks[ntracks+i] <- DataTrack(args$files[i], genome = "ce11", name = data_names[i], type = "l")
         }
     }
 
     # Plot
-    png(args$output, width = 6, height = 6, units = "in", res = 300)
-    plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(args$files))))
+    png(outfile, width = 6, height = 6, units = "in", res = 300)
+    plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(tracks)-2)))
     dev.off()
 }
 
