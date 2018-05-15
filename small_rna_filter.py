@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ###############################################################################
 # small_rna_filter.py version 3.0
@@ -21,11 +21,11 @@ def determine_file_type(file):
 
 	mode = ""
 
-	if re.search("\.fastq\.gz|\.fastq|\.fq|\.fq\.gz", file):
+	if re.search("\.fastq\.gz$|\.fastq$|\.fq$|\.fq\.gz$", file):
 		mode = "fastq"
-	elif re.search("\.fasta\.gz|\.fasta|\.fa|\.fa\.gz", file):
+	elif re.search("\.fasta\.gz$|\.fasta$|\.fa$|\.fa\.gz$", file):
 		mode = "fasta"
-	elif re.search("\.txt\.gz|\.txt", file):
+	elif re.search("\.txt\.gz$|\.txt$", file):
 		mode = "txt"
 	else:
 		sys.exit("ERROR: Unrecognized file type: " + str(file))
