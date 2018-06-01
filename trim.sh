@@ -13,7 +13,7 @@ module add bbmap
 # Defaults
 min_length=20
 paired=false
-adapter_file=/nas/longleaf/apps/bbmap/37.62/bbmap/resources/adapters.fa
+adapter_file="~/proj/seq/bbmap/adapters.fa"
 adapter="ref=${adapter_file}"
 right=0
 left=0
