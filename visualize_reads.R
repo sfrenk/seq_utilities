@@ -3,6 +3,7 @@
 suppressPackageStartupMessages(library(Gviz))
 suppressPackageStartupMessages(library(biomaRt))
 suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(argparse))
 library(rtracklayer)
 
@@ -57,6 +58,19 @@ parser$add_argument("-n", "--names",
                     default = "")
 
 args <- parser$parse_args()
+
+# Get output image type
+if (args$output == "") {
+    image_type <- "png"
+} else if (grepl("\\.png", args$output)){
+    image_type <- "png"
+} else if (grepl("\\.svg", args$output)){
+    image_type <- "svg"
+} else{
+    print("ERROR: invalid extension for output filename (use .png or .svg)")
+    q(save = "no", status = 1)
+}
+
 
 # Check input files
 for (file in args$files){
@@ -115,7 +129,7 @@ make_panel <- function(chrom, start, end){
 
     # Anotation track (gene models)
     if (!backup_grtrack){
-        grtrack <- BiomartGeneRegionTrack(start, end, mart, chrom)
+        grtrack <- BiomartGeneRegionTrack(start, end, mart, chrom, shape = "smallArrow")
     } else{
         g = as.data.frame(import("/nas/longleaf/home/sfrenk/proj/seq/WS251/genes.gtf"))
         g <- g %>% filter(seqnames == chrom)
@@ -127,7 +141,7 @@ make_panel <- function(chrom, start, end){
     
     # Add any extra annotation tracks
     if (length(ano_tracks) > 0){
-        for (i in length(ano_tracks)){
+        for (i in 1:length(ano_tracks)){
             tracks[2+i] <- ano_tracks[i]
         }
     }
@@ -138,9 +152,9 @@ make_panel <- function(chrom, start, end){
     for (i in 1:length(args$files)){
         if (grepl(".bam", args$files[i])){
             if (args$ylim > 0){
-                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], ylim = c(0, args$ylim), type = args$type)
+                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], ylim = c(0, args$ylim), type = args$type, frame = TRUE)
             } else {
-                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], type = args$type)
+                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], type = args$type, frame = TRUE)
             }
         } else {
             # Bedgraph file
@@ -149,9 +163,14 @@ make_panel <- function(chrom, start, end){
     }
 
     # Plot
-    png(outfile, width = 6, height = 6, units = "in", res = 300)
-    plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(tracks)-2)))
-    dev.off()
+    if (image_type == "png"){
+        png(outfile, width = 6, height = 6, units = "in", res = 300)
+        plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(tracks)-2)))
+        dev.off()
+    } else if (image_type == "svg"){
+        svg(outfile, width = 4, height = 4)
+        plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(tracks)-2)))
+        dev.off()
+    }
 }
-
 make_panel(args$chrom, args$start, args$end)
