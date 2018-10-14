@@ -51,10 +51,14 @@ parser$add_argument("-r", "--regex",
                     default = "(.+)\\.bam")
 
 parser$add_argument("-a", "--annotation",
-                    help = "Extra anotation track to add (gff3/gtf format)")
+                    help = "Comma-spearated list of extra anotation tracks to add (gff3/gtf format)")
 
 parser$add_argument("-n", "--names",
                     help = "Comma separated list of Names of datatracks (optional. By default, name is extracted from filename using regex argument)",
+                    default = "")
+
+parser$add_argument("-g", "--gene_annotation",
+                    help = "gtf file containing gene annotaion data (Use this option when using a species other than C. elegans)",
                     default = "")
 
 args <- parser$parse_args()
@@ -70,7 +74,6 @@ if (args$output == "") {
     print("ERROR: invalid extension for output filename (use .png or .svg)")
     q(save = "no", status = 1)
 }
-
 
 # Check input files
 for (file in args$files){
@@ -96,18 +99,23 @@ if (args$output == ""){
 
 # Annotation track
 options(ucscChromosomeNames=FALSE)
-
-# There's sometimes a problem with connecting to biomart, so need to keep trying if there is an error
-backup_grtrack <- FALSE
-try_counter <- 0
-while(!exists("mart") & try_counter < 10){
-    tryCatch(mart <- useMart(biomart="ensembl", dataset="celegans_gene_ensembl"), error = function(x) {Sys.sleep(10)})
-    try_counter <- try_counter + 1
-}
-
-if (!exists("mart")){
-    print("Could not connect to Biomart, defaulting to gtf backup")
-    backup_grtrack <- TRUE
+ano_gtf <- args$gene_annotation
+if (ano_gtf == ""){ 
+    
+    print("Attempting to get gene annotation from BioMart")
+    
+    # There's sometimes a problem with connecting to biomart, so need to keep trying if there is an error
+    backup_grtrack <- FALSE
+    try_counter <- 0
+    while(!exists("mart") & try_counter < 10){
+        tryCatch(mart <- useMart(biomart="ensembl", dataset="celegans_gene_ensembl"), error = function(x) {Sys.sleep(10)})
+        try_counter <- try_counter + 1
+    }
+    
+    if (!exists("mart")){
+        print("Could not connect to Biomart, defaulting to gtf backup")
+        ano_gtf <- "/nas/longleaf/home/sfrenk/proj/seq/WS251/genes.gtf"
+    }
 }
 
 # Axis track
@@ -116,10 +124,12 @@ gtrack <- GenomeAxisTrack(fontsize = 10, labelPos = "above")
 # Extra annotation tracks
 ano_tracks <- list()
 
-if (length(args$annotation) > 0){ 
-    for (i in 1:length(args$annotation)){
-        gff <- import.gff(args$annotation[i])
-        ano_tracks[i] <- GeneRegionTrack(gff, showId = TRUE, name = str_extract(args$annotation[i], "[^/]+$"), background.title = "transparent", fontsize = 10)
+ano_files <- unlist(strsplit(args$annotation, ","))
+if (length(ano_files) > 0){ 
+    for (i in 1:length(ano_files)){
+        gff <- import.gff(ano_files[i])
+        gff$symbol <- gff$gene_id
+        ano_tracks[i] <- GeneRegionTrack(gff, showId = TRUE, name = str_extract(args$annotation[i], "[^/]+$"), background.title = "transparent", fontsize = 10, shape = "arrow")
     }
 }
 
@@ -128,20 +138,21 @@ if (length(args$annotation) > 0){
 make_panel <- function(chrom, start, end){
 
     # Anotation track (gene models)
-    if (!backup_grtrack){
-        grtrack <- BiomartGeneRegionTrack(start, end, mart, chrom, shape = "smallArrow")
+    if (ano_gtf == ""){
+        grtrack <- BiomartGeneRegionTrack(start, end, mart, chrom, shape = "arrow")
     } else{
-        g = as.data.frame(import("/nas/longleaf/home/sfrenk/proj/seq/WS251/genes.gtf"))
+        g = as.data.frame(import(ano_gtf))
         g <- g %>% filter(seqnames == chrom)
-        grtrack <- GeneRegionTrack(start = start, end = end, chromosome = chrom, rstarts = g$start, rends = g$end, transcript = g$transcript_id, strand = g$strand, name = "", symbol = g$gene_name, showId = TRUE, geneSymbol = TRUE, shape = "smallArrow")
+        grtrack <- GeneRegionTrack(start = start, end = end, chromosome = chrom, rstarts = g$start, rends = g$end, transcript = g$transcript_id, strand = g$strand, name = "", symbol = g$gene_name, showId = TRUE, geneSymbol = TRUE, shape = "arrow")
     }
     
     # Assemble all tracks into one list
     tracks <- list(gtrack, grtrack)
     
     # Add any extra annotation tracks
-    if (length(ano_tracks) > 0){
-        for (i in 1:length(ano_tracks)){
+    n_ano_tracks <- length(ano_tracks)
+    if (n_ano_tracks > 0){
+        for (i in 1:n_ano_tracks){
             tracks[2+i] <- ano_tracks[i]
         }
     }
@@ -149,7 +160,8 @@ make_panel <- function(chrom, start, end){
     ntracks <- length(tracks)
     
     # Data tracks
-    for (i in 1:length(args$files)){
+    n_data_tracks <- length(args$files)
+    for (i in 1:n_data_tracks){
         if (grepl(".bam", args$files[i])){
             if (args$ylim > 0){
                 tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], ylim = c(0, args$ylim), type = args$type, frame = TRUE)
@@ -165,11 +177,11 @@ make_panel <- function(chrom, start, end){
     # Plot
     if (image_type == "png"){
         png(outfile, width = 6, height = 6, units = "in", res = 300)
-        plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(tracks)-2)))
+        plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(0.5, n_ano_tracks), rep(2, n_data_tracks)))
         dev.off()
     } else if (image_type == "svg"){
         svg(outfile, width = 4, height = 4)
-        plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(2, length(tracks)-2)))
+        plotTracks(tracks, from = start, to = end, chromosome = chrom, baseline = 0, sizes = c(1, 1, rep(0.5, n_ano_tracks), rep(2, n_data_tracks)))
         dev.off()
     }
 }
