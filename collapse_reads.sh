@@ -85,34 +85,7 @@ else
 		input_file=${input}
 	fi
 
-	# Remove output file if it already exists
-
-	if [[ -f $output ]]; then
-		rm $output
-	fi
-
-	while read line; do
-
-		if [[ ${line:0:1} == ">" ]]; then
-
-			# fasta header
-			printf "%s\n" "$line" >> ${output}
-			read line
-
-		fi
-
-		seq=$(echo "$line" | sed -r 's/(.+)(count=|\t).*/\1/g')
-		count=$(echo "$line" | sed -r 's/.*(count=|\t)([0-9]+).*/\2/g')
-
-		while [[ $count > 0 ]]; do
-
-			printf "%s\n" "$seq" >> ${output}
-			let count-=1
-
-		done
-
-
-	done < $input_file
+	awk 'BEGIN{FS="_count="}{if(/^>/){x=$1;y=$2;z=getline}{for(i=1;i<=y;i++){print x"_"i"\n"$z}}}' $input_file > $output
 
 	if [[ -f ${output}"_temp.txt" ]]; then
 		rm ${output}"_temp.txt"
