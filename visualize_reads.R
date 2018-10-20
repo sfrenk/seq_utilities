@@ -41,7 +41,7 @@ parser$add_argument("-y", "--ylim",
                     default = 0)
 
 parser$add_argument("-t", "--type",
-                    help = "Type of plot for data tracks (coverage (default) or pileup)",
+                    help = "Type of plot for data tracks (coverage (default) or pileup). If providing more than one data track, this argument can take the form of a comma-separated list of plot type for each data track.",
                     type = "character",
                     default = "coverage")
 
@@ -51,7 +51,8 @@ parser$add_argument("-r", "--regex",
                     default = "(.+)\\.bam")
 
 parser$add_argument("-a", "--annotation",
-                    help = "Comma-spearated list of extra anotation tracks to add (gff3/gtf format)")
+                    help = "Comma-spearated list of extra anotation tracks to add (gff3/gtf format)",
+                    default = "")
 
 parser$add_argument("-n", "--names",
                     help = "Comma separated list of Names of datatracks (optional. By default, name is extracted from filename using regex argument)",
@@ -133,13 +134,25 @@ if (length(ano_files) > 0){
     }
 }
 
+# Plot type for datatracks
+n_data_tracks <- length(args$files)
+data_track_type <- unlist(strsplit(args$type, ","))
+
+if (length(data_track_type) == 1){
+    # If only one type given, use this type for all datatracks
+    data_track_type <- rep(data_track_type, n_data_tracks)
+} else if (length(data_track_type) != n_data_tracks){
+    print("ERROR: Number of data track types in -t/--type option must be equal to number of data tracks")
+    q(save = "no", status = 1)
+}
+
 ## Plot tracks
 #backup_grtrack <- TRUE
 make_panel <- function(chrom, start, end){
 
     # Anotation track (gene models)
     if (ano_gtf == ""){
-        grtrack <- BiomartGeneRegionTrack(start, end, mart, chrom, shape = "arrow")
+        grtrack <- BiomartGeneRegionTrack(start, end, mart, chrom, shape = "arrow", showId = TRUE)
     } else{
         g = as.data.frame(import(ano_gtf))
         g <- g %>% filter(seqnames == chrom)
@@ -160,13 +173,12 @@ make_panel <- function(chrom, start, end){
     ntracks <- length(tracks)
     
     # Data tracks
-    n_data_tracks <- length(args$files)
     for (i in 1:n_data_tracks){
         if (grepl(".bam", args$files[i])){
             if (args$ylim > 0){
-                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], ylim = c(0, args$ylim), type = args$type, frame = TRUE)
+                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], ylim = c(0, args$ylim), type = data_track_type[i], frame = TRUE)
             } else {
-                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], type = args$type, frame = TRUE)
+                tracks[ntracks+i] <- AlignmentsTrack(args$files[i], name = data_names[i], type = data_track_type[i], frame = TRUE)
             }
         } else {
             # Bedgraph file
